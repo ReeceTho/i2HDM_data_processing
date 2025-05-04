@@ -38,6 +38,7 @@ if 'dependent_variables' in LZ:
         y_values = [point['value'] * conversion_factor for point in var['values']]
         y_data[name] = y_values
 
+
 # Changing for masses of neutral and charged
 nf["Mh+"] = nf["DMP"] + nf["MD1"]
 nf["Mh2"] = nf["DM3"] + nf["DMP"] + nf["MD1"]
@@ -136,15 +137,15 @@ def cov_inv(cov_matrix):
     return np.linalg.inv(cov_matrix)
 
 variableAxis = {
-    'MD1' : r"$M_{h_1}$ / (GeV)",
+    'MD1' : r"$M_{h_1}$ / GeV",
     'DMP' : r"$M_{h^+}-M_{h_1}$ / GeV",
     'DM2' : r"$M_{h_2}-M_{h_1}$ / GeV",
     'DM3' : r"$M_{h_2}-M_{h^+}$ / GeV",
     'l345' : r"$\lambda_{345}$",
     'ld'  : r"$\lambda_{2}$",
     'Omegah2' : r"$\Omega h^2$",
-    'sigV' : r"$\langle\sigma v\rangle$ / CHECK UNIT",
-    'protonSI' : r"PROTON SI NEEDS TITLE",
+    'sigV' : r"$\langle\sigma v\rangle$ / cm$^3$s$^{-1}$",
+    'protonSI' : r"$\sigma_{SI}$ / pb",
     'PvalDD' : r"Pval - Direct Detection",
     'CMB_ID' : r"CMB - Indirect Detection",
     'brH_DMDM' : r"Branching ratio",
@@ -153,7 +154,6 @@ variableAxis = {
     'S' : r"S",
     'T' : r"T"
 }
-
 
 
 # Filter the DataFrame to include rows where PvalDD > 0.05
@@ -267,8 +267,8 @@ constraint_toppers = {'nf': "Unfiltered Data"}
 
 # Handle special cases first
 constraint_toppers["tot"] = "All Constraints (Ωh²<0.12) Applied"
-constraint_toppers["totpla"] = "All Constraints (Ωh²=0.12) Applied"
-constraint_toppers["totex"] = "All Constraints (Ωh²=0.12) Applied"
+constraint_toppers["totpla"] = "All Constraints (Ωh²=0.12)"
+constraint_toppers["totex"] = "All Constraints (Ωh²=0.12)"
 
 for cut_name, data in filtered_data.items():
     # Skip special cases already handled
@@ -351,6 +351,7 @@ axisSize = 28
 pointSize = 1
 
 def startPlot(cut, x, y, z, i, j, k, dependents):
+    global titleSize, labelSize, axisSize, pointSize
     fig, ax = plt.subplots(figsize=(11, 8),constrained_layout=True)
 
     print("cut: ", cut)
@@ -392,10 +393,6 @@ def startPlot(cut, x, y, z, i, j, k, dependents):
     print("y = ",y)
     if cut == 'totex':
         plot_colour = 'red'
-
-    elif x in {'MD1','Mh+','Mh2'} and y in {'MD1','Mh+','Mh2'}:
-        plot_colour = 'red'
-        print("THIS IS TRUE!")
 
     else:
         plot_colour = 1
@@ -447,15 +444,16 @@ custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=256)
 
 
 def makePlot(ax, key, dataset, x, y, z, k , max=1, min=1, colour = 1):
+    global titleSize, labelSize, axisSize, pointSize
     if colour == 1:
         if k == 'log':  #log colour map
             if z in {'l345'} : #lambda has negative numbers, so we make a new graph specifically for it
                 sc = ax.scatter(dataset[x], dataset[y], c=dataset[z], rasterized=True,
                                 cmap=cmc.berlin, norm=SymLogNorm(linthresh = 1e-8, vmin=-1e-3, #maybe change the colour
                                 vmax=1e-3),s=pointSize, label=constraint_titles[key])
-            elif z in {'MD1', 'Mh2', 'Mh+'} : #fixing the plot
-                sc = ax.scatter(dataset[x], dataset[y], c=dataset[z], rasterized=True, cmap='jet', norm=LogNorm(
-                                vmin=10, vmax=max), s=pointSize, label=constraint_titles[key])
+            #elif z in {'MD1', 'Mh2', 'Mh+'} : #fixing the plot
+            #    sc = ax.scatter(dataset[x], dataset[y], c=dataset[z], rasterized=True, cmap='jet', norm=LogNorm(
+            #                    vmin=10, vmax=max), s=pointSize, label=constraint_titles[key])
             elif z in {'DM3'} : #lambda has negative numbers, so we make a new graph specifically for it
                 sc = ax.scatter(dataset[x], dataset[y], c=dataset[z], rasterized=True,
                                 cmap='jet', norm=SymLogNorm(linthresh = 1e-2, vmin=min, #maybe change the colour
@@ -513,6 +511,7 @@ def makePlot(ax, key, dataset, x, y, z, k , max=1, min=1, colour = 1):
     return sc
 
 def makeAxis(x, i, y, j, z, sc, cut):
+    global titleSize, labelSize, axisSize, pointSize
     if x in {'l345'} and i == 'log':
         plt.xscale('symlog', linthresh = 1e-5)
     elif x in {'DM3'} and i == 'log':
@@ -528,8 +527,8 @@ def makeAxis(x, i, y, j, z, sc, cut):
 
     if y in {'l345'} and j == 'log':
         plt.yscale('symlog', linthresh = 1e-5)
-    elif y in {'DM3'} and i == 'log':
-        plt.yscale('symlog', linthresh = 1e-3)
+    #elif y in {'DM3'} and i == 'log':
+    #    plt.yscale('symlog', linthresh = 1e-3)
     elif y == 'brH_DMDM' and j == 'log':
         plt.yscale('symlog', linthresh = 1e-18)
         plt.ylim(-0.5e-20, 1)
@@ -658,17 +657,27 @@ subplot_header.grid(row=8, column=0, columnspan=2, pady=10, sticky="nsew")
 
 def submit_subplot():
     try:
-        subplot = [int(columns.get()), int(rows.get())]  # Try converting input to a number
-        print("Number Entered", f"You entered: {subplot}")
+        global titleSize, labelSize, axisSize, pointSize
+        sizes = [int(titleSize_input.get()), int(labelSize_input.get()), int(axisSize_input.get())]  # Try converting input to a number
+        titleSize = int(titleSize_input.get())
+        labelSize = int(labelSize_input.get())
+        axisSize = int(axisSize_input.get())
+        print("Number Entered", f"You entered: {sizes}")
     except ValueError:
         print("Invalid Input", "Please enter a valid number.")
-tk.Label(axis_scale_frame, text="Number of columns", **label_style).grid(row=9, column=0, padx=10, sticky="e")
-columns = tk.Entry(axis_scale_frame)
-columns.grid(row=9, column=1, padx=10, sticky="e")
 
-tk.Label(axis_scale_frame, text="Number of rows", **label_style).grid(row=10, column=0, padx=10, sticky="e")
-rows = tk.Entry(axis_scale_frame)
-rows.grid(row=10, column=1, padx=10, sticky="e")
+
+tk.Label(axis_scale_frame, text="Title Size (Default 40)", **label_style).grid(row=9, column=0, padx=10, sticky="e")
+titleSize_input = tk.Entry(axis_scale_frame)
+titleSize_input.grid(row=9, column=1, padx=10, sticky="e")
+
+tk.Label(axis_scale_frame, text="Label Size (Default 42)", **label_style).grid(row=10, column=0, padx=10, sticky="e")
+labelSize_input = tk.Entry(axis_scale_frame)
+labelSize_input.grid(row=10, column=1, padx=10, sticky="e")
+
+tk.Label(axis_scale_frame, text="Axis Size (Default 28)", **label_style).grid(row=11, column=0, padx=10, sticky="e")
+axisSize_input = tk.Entry(axis_scale_frame)
+axisSize_input.grid(row=11, column=1, padx=10, sticky="e")
 
 # Next button to go to the scale screen
 def go_to_constraint_screen():
@@ -684,8 +693,10 @@ def update_selected_options_axis(*args):
         f"SCALE:\nX-scale: {x_scale.get()}\nY-scale: {y_scale.get()}\nZ-scale: {z_scale.get()}"
     )
 
+
+
 go_to_constraints_button = tk.Button(axis_scale_frame, text="Next", command=go_to_constraint_screen, width=30, **button_style)
-go_to_constraints_button.grid(row=11, column=0, columnspan=2, pady=20)
+go_to_constraints_button.grid(row=12, column=0, columnspan=2, pady=20)
 
 
 
